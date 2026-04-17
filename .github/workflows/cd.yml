@@ -2,9 +2,9 @@
 # Runs on push to main branch only
 # Steps:
 #   1. Run tests (same as CI)
-#   2. Build React production bundle (vite build → dist/)
+#   2. Build React production bundle (vite build -> dist/)
 #   3. Upload dist/ as a GitHub Actions build artifact
-#   4. Deploy to Firebase Hosting using FIREBASE_TOKEN secret
+#   4. Deploy to Firebase Hosting using FIREBASE_SERVICE_ACCOUNT secret
 
 name: CD - Build & Deploy to Firebase
 
@@ -36,7 +36,7 @@ jobs:
         working-directory: react-firebase-app
         run: npm test
 
-      # ── Part (b): Build production artifact ──────────────────────────────
+      # Part (b): Build production artifact
       - name: Build React production bundle
         working-directory: react-firebase-app
         env:
@@ -55,10 +55,10 @@ jobs:
           path: react-firebase-app/dist/
           retention-days: 7
 
-      # ── Deploy to Firebase Hosting ────────────────────────────────────────
+      # Deploy to Firebase Hosting (runs after Firebase secrets are added)
       - name: Deploy to Firebase Hosting
-        if: ${{ secrets.FIREBASE_SERVICE_ACCOUNT != '' }}
         uses: FirebaseExtended/action-hosting-deploy@v0
+        continue-on-error: true
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
