@@ -1,0 +1,65 @@
+# Part (b): CD Workflow
+# Runs on push to main branch only
+# Steps:
+#   1. Run tests (same as CI)
+#   2. Build React production bundle (vite build → dist/)
+#   3. Upload dist/ as a GitHub Actions build artifact
+#   4. Deploy to Firebase Hosting using FIREBASE_TOKEN secret
+
+name: CD - Build & Deploy to Firebase
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build-and-deploy:
+    name: Build, Store Artifact & Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: react-firebase-app/package-lock.json
+
+      - name: Install dependencies
+        working-directory: react-firebase-app
+        run: npm ci
+
+      - name: Run tests
+        working-directory: react-firebase-app
+        run: npm test
+
+      # ── Part (b): Build production artifact ──────────────────────────────
+      - name: Build React production bundle
+        working-directory: react-firebase-app
+        env:
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+        run: npm run build
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: react-production-build
+          path: react-firebase-app/dist/
+          retention-days: 7
+
+      # ── Deploy to Firebase Hosting ────────────────────────────────────────
+      - name: Deploy to Firebase Hosting
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          channelId: live
+          projectId: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
